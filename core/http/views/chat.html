@@ -581,29 +581,22 @@ SOFTWARE.
   <script defer src="static/chat.js"></script>
   {{ $allGalleryConfigs:=.GalleryConfig }}
   {{ $model:=.Model}}
-  <body class="bg-[#101827] text-[#E5E7EB] flex flex-col h-screen" x-data="{ sidebarOpen: true }">
+  <body class="bg-[#101827] text-[#E5E7EB] flex flex-col h-screen" x-data="{ leftSidebarOpen: true, rightSidebarOpen: true }">
     {{template "views/partials/navbar" .}}
 
-    <!-- Main container with sidebar toggle -->
+    <!-- Main container with sidebars -->
     <div class="flex flex-1 overflow-hidden relative">
-      <!-- Sidebar -->
+      <!-- Left Sidebar - Chat History & Model Selection -->
       <div
         class="sidebar bg-[#1E293B] fixed top-16 bottom-0 left-0 w-64 transform transition-transform duration-300 ease-in-out z-30 border-r border-[#101827] overflow-y-auto"
-        :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+        :class="leftSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
 
         <div class="p-4 flex justify-between items-center border-b border-[#101827]">
           <div class="flex items-center gap-2">
-            <h2 class="text-lg font-semibold text-[#E5E7EB]">Chat Settings</h2>
-            <a
-              href="https://localai.io/features/text-generation/"
-              target="_blank"
-              class="text-[#94A3B8] hover:text-[#38BDF8] transition-colors"
-              title="Documentation">
-              <i class="fas fa-book text-sm"></i>
-            </a>
+            <h2 class="text-lg font-semibold text-[#E5E7EB]">Chats</h2>
           </div>
           <button
-            @click="sidebarOpen = false"
+            @click="leftSidebarOpen = false"
             class="text-[#94A3B8] hover:text-[#E5E7EB] focus:outline-none">
             <i class="fa-solid fa-times"></i>
           </button>
@@ -708,162 +701,170 @@ SOFTWARE.
               </div>
             </div>
           </div>
+        </div>
+      </div>
 
+      <!-- Right Sidebar - Settings & Model Info -->
+      <div
+        class="sidebar bg-[#1E293B] fixed top-16 bottom-0 right-0 w-64 transform transition-transform duration-300 ease-in-out z-30 border-l border-[#101827] overflow-y-auto"
+        :class="rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'">
+        
+        <div class="p-4 flex justify-between items-center border-b border-[#101827]">
+          <div class="flex items-center gap-2">
+            <h2 class="text-lg font-semibold text-[#E5E7EB]">Settings</h2>
+          </div>
+          <button
+            @click="rightSidebarOpen = false"
+            class="text-[#94A3B8] hover:text-[#E5E7EB] focus:outline-none">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
+
+        <!-- Right Sidebar content -->
+        <div class="p-4 space-y-6">
           {{ if $model }}
           {{ $galleryConfig:= index $allGalleryConfigs $model}}
           {{ if $galleryConfig }}
           <!-- Model info -->
           <div class="space-y-2">
-            <div class="flex items-center">
-              {{ if $galleryConfig.Icon }}<img src="{{$galleryConfig.Icon}}" class="rounded-lg w-8 h-8 mr-2">{{end}}
-              <h3 class="text-md font-medium">{{ $model }}</h3>
+            <div class="flex items-center justify-center mb-4">
+              {{ if $galleryConfig.Icon }}<img src="{{$galleryConfig.Icon}}" class="rounded-lg w-16 h-16">{{end}}
+            </div>
+            <div class="flex items-center justify-center gap-2">
+              <h3 class="text-md font-medium text-center">{{ $model }}</h3>
               <button 
                 data-twe-ripple-init 
                 data-twe-ripple-color="light" 
-                class="ml-2 text-[#94A3B8] hover:text-[#38BDF8] transition-colors" 
+                class="text-[#94A3B8] hover:text-[#38BDF8] transition-colors" 
                 data-modal-target="model-info-modal" 
                 data-modal-toggle="model-info-modal"
                 title="Model Information">
                 <i class="fas fa-info-circle text-sm"></i>
               </button>
-              <button
-                @click="$store.chat.clear()"
-                id="clear"
-                title="Clear chat history"
-                class="ml-2 text-[#94A3B8] hover:text-[#38BDF8] transition-colors">
-                <i class="fa-solid fa-trash-can text-sm"></i>
-              </button>
             </div>
+            <button
+              @click="$store.chat.clear()"
+              id="clear"
+              title="Clear chat history"
+              class="w-full mt-3 px-3 py-2 text-sm rounded text-[#E5E7EB] bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 transition-colors">
+              <i class="fa-solid fa-trash-can mr-2"></i> Clear History
+            </button>
           </div>
           {{ end }}
           {{ end }}
 
-          <div x-data="{ showPromptForm: false }" class="space-y-3">
-              <!-- MCP Toggle - Show only when MCP is available for current model -->
-              <div x-show="$store.chat.mcpAvailable">
-                <!-- MCP Toggle -->
-                <div class="flex items-center justify-between px-3 py-2 text-sm rounded text-[#E5E7EB] bg-[#1E293B] border border-[#38BDF8]/20">
-                  <span><i class="fa-solid fa-plug mr-2 text-[#38BDF8]"></i> Agentic MCP Mode</span>
-                  <label class="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" id="mcp-toggle" class="sr-only peer" x-model="$store.chat.mcpMode" @change="$store.chat.saveCurrentChatDebounced()">
-                    <div class="w-11 h-6 bg-[#101827] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#38BDF8]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-[#1E293B] after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#38BDF8]"></div>
-                  </label>
+          <!-- System Prompt -->
+          <div x-data="{ showPromptForm: false }" class="space-y-2">
+            <button
+              @click="showPromptForm = !showPromptForm"
+              class="w-full flex items-center justify-between px-3 py-2 text-sm rounded text-[#E5E7EB] bg-[#1E293B] hover:bg-[#1E293B]/80 border border-[#38BDF8]/20 hover:border-[#38BDF8]/40 transition-colors">
+              <span><i class="fa-solid fa-message mr-2 text-[#38BDF8]"></i> System Prompt</span>
+              <i :class="showPromptForm ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid"></i>
+            </button>
+
+            <div x-show="showPromptForm" x-transition x-data="{
+              showToast: false,
+              previousPrompt: $store.chat.systemPrompt,
+              isUpdated() {
+                if (this.previousPrompt !== $store.chat.systemPrompt) {
+                  this.showToast = true;
+                  this.previousPrompt = $store.chat.systemPrompt;
+                  setTimeout(() => {this.showToast = false;}, 2000);
+                }
+              } 
+            }" class="p-3 bg-[#1E293B] border border-[#38BDF8]/20 rounded-lg">
+              <form id="system_prompt" @submit.prevent="isUpdated" class="flex flex-col space-y-2">
+                <textarea
+                  type="text"
+                  id="systemPrompt"
+                  name="systemPrompt"
+                  class="bg-[#101827] text-[#E5E7EB] border border-[#1E293B] focus:border-[#38BDF8] focus:ring focus:ring-[#38BDF8] focus:ring-opacity-50 rounded-md shadow-sm p-2 appearance-none min-h-24 placeholder-[#94A3B8]"
+                  placeholder="System prompt"
+                  x-model.lazy="$store.chat.systemPrompt"
+                ></textarea>
+                <div
+                  x-show="showToast"
+                  x-transition
+                  class="mb-2 text-green-400 px-4 py-2 text-sm text-center bg-green-500/10 border border-green-500/30 rounded"
+                >
+                  System prompt updated!
                 </div>
-
-                <!-- MCP Mode Notification -->
-                <div x-show="$store.chat.mcpMode" class="p-3 bg-[#38BDF8]/10 border border-[#38BDF8]/30 rounded text-[#94A3B8] text-xs">
-                  <div class="flex items-start space-x-2">
-                    <i class="fa-solid fa-info-circle text-[#38BDF8] mt-0.5"></i>
-                    <div>
-                      <p class="font-medium text-[#E5E7EB] mb-1">Non-streaming Mode Active</p>
-                      <p class="text-[#94A3B8]">Responses will be processed in full before display. This may take significantly longer (up to 5 minutes), especially on CPU-only systems.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                @click="showPromptForm = !showPromptForm"
-                class="w-full flex items-center justify-between px-3 py-2 text-sm rounded text-[#E5E7EB] bg-[#1E293B] hover:bg-[#1E293B]/80 border border-[#38BDF8]/20 hover:border-[#38BDF8]/40 transition-colors glow-on-hover"
-              >
-                <span><i class="fa-solid fa-message mr-2 text-[#38BDF8]"></i> System Prompt</span>
-                <i :class="showPromptForm ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid"></i>
-              </button>
-
-              <div x-show="showPromptForm" x-data="{
-                showToast: false,
-                previousPrompt: $store.chat.systemPrompt,
-                isUpdated() {
-                  if (this.previousPrompt !== $store.chat.systemPrompt) {
-                    this.showToast = true;
-                    this.previousPrompt = $store.chat.systemPrompt;
-                    setTimeout(() => {this.showToast = false;}, 2000);
-                  }
-                } 
-              }" class="p-3 bg-[#1E293B] border border-[#38BDF8]/20 rounded-lg">
-                <form id="system_prompt" @submit.prevent="isUpdated" class="flex flex-col space-y-2">
-                  <textarea
-                    type="text"
-                    id="systemPrompt"
-                    name="systemPrompt"
-                    class="bg-[#101827] text-[#E5E7EB] border border-[#1E293B] focus:border-[#38BDF8] focus:ring focus:ring-[#38BDF8] focus:ring-opacity-50 rounded-md shadow-sm p-2 appearance-none min-h-24 placeholder-[#94A3B8]"
-                    placeholder="System prompt"
-                    x-model.lazy="$store.chat.systemPrompt"
-                  ></textarea>
-                  <div
-                    x-show="showToast"
-                    x-transition
-                    class="mb-2 text-green-400 px-4 py-2 text-sm text-center bg-green-500/10 border border-green-500/30 rounded"
-                  >
-                    System prompt updated!
-                  </div>
-                  <button
-                    type="submit"
-                    class="px-3 py-2 text-sm rounded text-[#101827] bg-[#38BDF8] hover:bg-[#38BDF8]/90 transition-colors font-medium"
-                  >
-                    Save System Prompt
-                  </button>
-                </form>
-              </div>
-
-              <!-- Storage Management -->
-              <div x-data="{ showStorage: false }" class="space-y-2">
                 <button
-                  @click="showStorage = !showStorage"
-                  class="w-full flex items-center justify-between px-3 py-2 text-sm rounded text-[#E5E7EB] bg-[#1E293B] hover:bg-[#1E293B]/80 border border-[#38BDF8]/20 hover:border-[#38BDF8]/40 transition-colors">
-                  <span><i class="fa-solid fa-database mr-2 text-[#38BDF8]"></i> Storage Management</span>
-                  <i :class="showStorage ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid"></i>
+                  type="submit"
+                  class="px-3 py-2 text-sm rounded text-[#101827] bg-[#38BDF8] hover:bg-[#38BDF8]/90 transition-colors font-medium"
+                >
+                  Save System Prompt
                 </button>
-                
-                <div x-show="showStorage" x-transition class="p-3 bg-[#1E293B] border border-[#38BDF8]/20 rounded-lg space-y-3">
-                  <div class="space-y-2 text-xs">
-                    <div class="flex justify-between text-[#94A3B8]">
-                      <span>Storage Used:</span>
-                      <span class="text-[#E5E7EB] font-medium" x-text="(window.chatStorage?.getStorageSizeMB() || '0') + ' MB'"></span>
-                    </div>
-                    <div class="flex justify-between text-[#94A3B8]">
-                      <span>Total Chats:</span>
-                      <span class="text-[#E5E7EB] font-medium" x-text="$store.chat.chats.length"></span>
-                    </div>
-                    <div class="flex justify-between text-[#94A3B8] border-t border-[#101827] pt-2">
-                      <span>Cache Limit:</span>
-                      <span class="text-[#E5E7EB] font-medium" x-text="(window.chatStorage?.getCacheLimit().mb || 50) + ' MB / ' + (window.chatStorage?.getCacheLimit().chats || 100) + ' chats'"></span>
-                    </div>
-                  </div>
-                  
-                  <div class="space-y-2">
-                    <button
-                      @click="if(confirm('Are you sure you want to clear all chats? This cannot be undone.')) { window.chatStorage?.clearAllChats(); $store.chat.refreshChatList(); $store.chat.createNewChat('{{$model}}'); }"
-                      class="w-full px-3 py-2 text-sm rounded text-white bg-red-500 hover:bg-red-600 transition-colors">
-                      <i class="fa-solid fa-trash-can mr-2"></i> Clear All Chats
-                    </button>
-                    <button
-                      @click="if(confirm('Clear chats older than 7 days?')) { const count = window.chatStorage?.clearOldChats(7) || 0; alert('Cleared ' + count + ' chat(s)'); $store.chat.refreshChatList(); }"
-                      class="w-full px-3 py-2 text-sm rounded text-[#E5E7EB] bg-[#101827] hover:bg-[#1E293B] border border-[#1E293B] transition-colors">
-                      <i class="fa-solid fa-clock mr-2"></i> Clear Old Chats (7 days)
-                    </button>
-                  </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Storage Management -->
+          <div x-data="{ showStorage: false }" class="space-y-2">
+            <button
+              @click="showStorage = !showStorage"
+              class="w-full flex items-center justify-between px-3 py-2 text-sm rounded text-[#E5E7EB] bg-[#1E293B] hover:bg-[#1E293B]/80 border border-[#38BDF8]/20 hover:border-[#38BDF8]/40 transition-colors">
+              <span><i class="fa-solid fa-database mr-2 text-[#38BDF8]"></i> Storage Management</span>
+              <i :class="showStorage ? 'fa-chevron-up' : 'fa-chevron-down'" class="fa-solid"></i>
+            </button>
+            
+            <div x-show="showStorage" x-transition class="p-3 bg-[#1E293B] border border-[#38BDF8]/20 rounded-lg space-y-3">
+              <div class="space-y-2 text-xs">
+                <div class="flex justify-between text-[#94A3B8]">
+                  <span>Storage Used:</span>
+                  <span class="text-[#E5E7EB] font-medium" x-text="(window.chatStorage?.getStorageSizeMB() || '0') + ' MB'"></span>
+                </div>
+                <div class="flex justify-between text-[#94A3B8]">
+                  <span>Total Chats:</span>
+                  <span class="text-[#E5E7EB] font-medium" x-text="$store.chat.chats.length"></span>
+                </div>
+                <div class="flex justify-between text-[#94A3B8] border-t border-[#101827] pt-2">
+                  <span>Cache Limit:</span>
+                  <span class="text-[#E5E7EB] font-medium" x-text="(window.chatStorage?.getCacheLimit().mb || 50) + ' MB / ' + (window.chatStorage?.getCacheLimit().chats || 100) + ' chats'"></span>
                 </div>
               </div>
+              
+              <div class="space-y-2">
+                <button
+                  @click="if(confirm('Are you sure you want to clear all chats? This cannot be undone.')) { window.chatStorage?.clearAllChats(); $store.chat.refreshChatList(); $store.chat.createNewChat('{{$model}}'); }"
+                  class="w-full px-3 py-2 text-sm rounded text-white bg-red-500 hover:bg-red-600 transition-colors">
+                  <i class="fa-solid fa-trash-can mr-2"></i> Clear All Chats
+                </button>
+                <button
+                  @click="if(confirm('Clear chats older than 7 days?')) { const count = window.chatStorage?.clearOldChats(7) || 0; alert('Cleared ' + count + ' chat(s)'); $store.chat.refreshChatList(); }"
+                  class="w-full px-3 py-2 text-sm rounded text-[#E5E7EB] bg-[#101827] hover:bg-[#1E293B] border border-[#1E293B] transition-colors">
+                  <i class="fa-solid fa-clock mr-2"></i> Clear Old Chats (7 days)
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Main chat container (shifts with sidebar) -->
+      <!-- Main chat container (shifts with sidebars) -->
       <div
         class="flex-1 flex flex-col transition-all duration-300 ease-in-out"
-        :class="sidebarOpen ? 'ml-64' : 'ml-0'">
+        :class="leftSidebarOpen && rightSidebarOpen ? 'ml-64 mr-64' : leftSidebarOpen ? 'ml-64 mr-0' : rightSidebarOpen ? 'ml-0 mr-64' : 'ml-0 mr-0'">
 
         <!-- Chat header with toggle button -->
         <div class="border-b border-[#1E293B] p-4 flex items-center justify-between">
           <div class="flex items-center">
-            <!-- Sidebar toggle button moved to be the first element in the header and with clear styling -->
+            <!-- Left Sidebar toggle button -->
             <button
-              @click="sidebarOpen = !sidebarOpen"
+              @click="leftSidebarOpen = !leftSidebarOpen"
+              class="mr-4 text-[#94A3B8] hover:text-[#E5E7EB] focus:outline-none bg-[#1E293B] hover:bg-[#1E293B]/80 p-2 rounded transition-colors"
+              style="min-width: 36px;"
+              title="Toggle chat history">
+              <i class="fa-solid" :class="leftSidebarOpen ? 'fa-times' : 'fa-bars'"></i>
+            </button>
+            
+            <!-- Right Sidebar toggle button -->
+            <button
+              @click="rightSidebarOpen = !rightSidebarOpen"
               class="mr-4 text-[#94A3B8] hover:text-[#E5E7EB] focus:outline-none bg-[#1E293B] hover:bg-[#1E293B]/80 p-2 rounded transition-colors"
               style="min-width: 36px;"
               title="Toggle settings">
-              <i class="fa-solid" :class="sidebarOpen ? 'fa-times' : 'fa-bars'"></i>
+              <i class="fa-solid fa-cog"></i>
             </button>
 
             <div class="flex items-center">
