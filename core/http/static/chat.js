@@ -687,8 +687,14 @@ function processAndSendMessage(inputValue) {
     });
   }
   
+  // Save chat before sending first message if it's unsaved
+  const store = Alpine.store("chat");
+  if (store && store.isUnsavedChat) {
+    store.saveCurrentChat();
+  }
+  
   // Add the message to the chat UI with just the icons
-  Alpine.store("chat").add("user", displayContent, images, audios);
+  store.add("user", displayContent, images, audios);
   
   // Update the last message in the store with the full content
   const history = Alpine.store("chat").history;
@@ -1592,8 +1598,8 @@ function initializeChatStorage() {
     if (activeChatId && chatStorage.loadChat(activeChatId)) {
       store.loadChat(activeChatId);
     } else if (model) {
-      // Create new chat for current model
-      store.createNewChat(model);
+      // Create new temporary chat for current model (don't save until user sends message)
+      store.createNewChat(model, false);
     }
   }
   

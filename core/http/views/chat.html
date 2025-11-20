@@ -84,6 +84,7 @@ SOFTWARE.
         chatTitle: "",
         currentModel: __initialModel,
         mcpAvailable: false,
+        isUnsavedChat: false,
         tokenUsage: {
           promptTokens: 0,
           completionTokens: 0,
@@ -108,12 +109,17 @@ SOFTWARE.
         saveCurrentChat() {
           if (!this.currentChatId || !window.chatStorage) return;
           
+          // Don't save empty unsaved chats
+          if (this.isUnsavedChat && this.history.length === 0) {
+            return;
+          }
+          
           const existingChat = window.chatStorage.loadChat(this.currentChatId);
           const now = Date.now();
           
           const chatData = {
             id: this.currentChatId,
-            model: document.getElementById('chat-model')?.value || '',
+            model: this.currentModel || document.getElementById('chat-model')?.value || '',
             title: this.chatTitle || window.chatStorage.generateChatTitle(this.history),
             history: this.history.map(msg => ({
               role: msg.role,
@@ -130,6 +136,9 @@ SOFTWARE.
             updatedAt: now
           };
           
+          // Mark as saved once we save it
+          this.isUnsavedChat = false;
+          
           // Only update updatedAt if there's an actual change
           const hasChanges = !existingChat || 
             JSON.stringify(existingChat.history) !== JSON.stringify(chatData.history) ||
@@ -137,8 +146,9 @@ SOFTWARE.
             existingChat.mcpMode !== chatData.mcpMode ||
             existingChat.title !== chatData.title;
           
-          if (hasChanges) {
+          if (hasChanges || this.isUnsavedChat) {
             window.chatStorage.saveChat(this.currentChatId, chatData);
+            window.chatStorage.setActiveChatId(this.currentChatId);
             // Only refresh list if there were actual changes to avoid unnecessary re-sorting
             this.refreshChatList();
           }
@@ -220,6 +230,7 @@ SOFTWARE.
           this.contextSize = chatData.contextSize || __chatContextSize;
           this.chatTitle = chatData.title || "";
           this.currentModel = chatData.model || null;
+          this.isUnsavedChat = false; // Loaded chats are always saved
           
           // Check MCP availability for this model
           this.checkMCPAvailability();
@@ -250,36 +261,16 @@ SOFTWARE.
           
           return true;
         },
-        createNewChat(model) {
+        createNewChat(model, saveImmediately = false) {
           if (!window.chatStorage) return null;
           
-          // Save current chat before creating new one
-          if (this.currentChatId) {
+          // Save current chat before creating new one (only if it's not unsaved or has content)
+          if (this.currentChatId && !this.isUnsavedChat && this.history.length > 0) {
             this.saveCurrentChat();
           }
           
           // Always create a NEW chat (don't reuse existing ones)
           const chatId = window.chatStorage.generateChatId();
-          const newChat = {
-            id: chatId,
-            model: model,
-            title: `Chat with ${model}`,
-            history: [],
-            systemPrompt: '',
-            mcpMode: false,
-            tokenUsage: {
-              promptTokens: 0,
-              completionTokens: 0,
-              totalTokens: 0,
-              currentRequest: null
-            },
-            contextSize: __chatContextSize,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          };
-          
-          // Save the new empty chat
-          window.chatStorage.saveChat(chatId, newChat);
           
           // Reset store to new chat state
           this.currentChatId = chatId;
@@ -295,19 +286,43 @@ SOFTWARE.
           this.contextSize = __chatContextSize;
           this.chatTitle = `Chat with ${model}`;
           this.currentModel = model;
+          this.isUnsavedChat = !saveImmediately; // Mark as unsaved unless explicitly told to save
           
           // Check MCP availability for this model
           this.checkMCPAvailability();
+          
+          // Only save to storage if explicitly requested
+          if (saveImmediately) {
+            const newChat = {
+              id: chatId,
+              model: model,
+              title: `Chat with ${model}`,
+              history: [],
+              systemPrompt: '',
+              mcpMode: false,
+              tokenUsage: {
+                promptTokens: 0,
+                completionTokens: 0,
+                totalTokens: 0,
+                currentRequest: null
+              },
+              contextSize: __chatContextSize,
+              createdAt: Date.now(),
+              updatedAt: Date.now()
+            };
+            window.chatStorage.saveChat(chatId, newChat);
+            window.chatStorage.setActiveChatId(chatId);
+            this.refreshChatList();
+          } else {
+            // Clear active chat ID for unsaved chats
+            window.chatStorage.setActiveChatId(null);
+          }
           
           // Update URL
           const url = new URL(window.location);
           url.pathname = `/chat/${model}`;
           url.searchParams.set('chatId', chatId);
           window.history.pushState({ chatId }, '', url);
-          
-          window.chatStorage.setActiveChatId(chatId);
-          // Refresh list after creating new chat to show it in the sidebar
-          this.refreshChatList();
           
           return chatId;
         },
@@ -1294,14 +1309,10 @@ SOFTWARE.
         // Use Alpine store to create or switch chat
         if (window.Alpine && Alpine.store("chat")) {
           const store = Alpine.store("chat");
-          // Find existing chat for this model or create new one
-          const existingChat = store.chats.find(c => c.model === model);
-          if (existingChat) {
-            store.switchChat(existingChat.id);
-          } else {
-            store.createNewChat(model);
-          }
-          // Check MCP availability after switching/creating
+          // Always create a new temporary chat when switching models
+          // Don't auto-select existing chats - let user start fresh
+          store.createNewChat(model, false); // false = don't save immediately
+          // Check MCP availability after creating
           store.checkMCPAvailability();
         } else {
           // Fallback: redirect to chat page
